@@ -1,0 +1,25 @@
+---
+import Layout from "./Layout.astro";
+
+const { frontmatter } = Astro.props;
+
+// 日付のフォーマット
+const date = frontmatter.pubDate ? new Date(frontmatter.pubDate) : new Date();
+const y = date.getFullYear();
+const m = String(date.getMonth() + 1).padStart(2, "0");
+const dd = String(date.getDate()).padStart(2, "0");
+---
+
+<Layout title={frontmatter.title}>
+  <ul>
+    <li>
+      <div class="date">
+        <p>記録日：{`${y}年${m}月${dd}日`}</p>
+      </div>
+      <article>
+        <h1>{frontmatter.title}</h1>
+        <slot />
+      </article>
+    </li>
+  </ul>
+</Layout>

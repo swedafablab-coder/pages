@@ -1,0 +1,92 @@
+---
+import { getCollection, type CollectionEntry } from "astro:content";
+import Layout from "../../layouts/Layout.astro";
+
+export async function getStaticPaths() {
+  const posts = await getCollection("blog");
+  return posts.map((post) => ({
+    params: { slug: post.slug },
+    props: { post },
+  }));
+}
+
+interface Props {
+  post: CollectionEntry<"blog">;
+}
+const { post } = Astro.props;
+
+const { Content } = await post.render();
+
+const toJSTParts = (d: Date | string) => {
+  const base = new Date(d);
+  const jst = new Date(
+    base.toLocaleString("en-US", { timeZone: "Asia/Tokyo" }),
+  );
+  const y = jst.getFullYear();
+  const m = String(jst.getMonth() + 1).padStart(2, "0");
+  const dd = String(jst.getDate()).padStart(2, "0");
+  return { y, m, dd };
+};
+
+const { y, m, dd } = toJSTParts(post.data.pubDate);
+---
+
+<Layout title={post.data.title}>
+  <ul>
+    <div class="date">
+      <p>記録日：{`${y}年${m}月${dd}日`}</p>
+    </div>
+
+    <article>
+      <h1 data-pagefind-meta="title">{post.data.title}</h1>
+      <div data-pagefind-body>
+        <span
+          style="opacity: 0; position: absolute; z-index: -1; user-select: none; pointer-events: none;"
+        >
+          {y}年{m}月{dd}日
+        </span>
+        <Content />
+        <nav class="post-nav">
+          <div class="left"></div>
+          <div class="right">
+            <span>カテゴリ:</span>
+            {
+              post.data.category && post.data.category !== "" ? (
+                <>
+                  <a href={`/category/${post.data.category}/`}>
+                    {post.data.category}
+                  </a>{" "}
+                  /
+                </>
+              ) : (
+                <>
+                  - /
+                </>
+              )
+            }
+            <span>タグ:</span>
+            {
+              (() => {
+                const validTags = (post.data.tags ?? []).filter(
+                  (t) => t && t !== "",
+                );
+                return validTags.length > 0 ? (
+                  validTags.map((t, i) => (
+                    <>
+                      <a href={`/tag/${t}/`}>{t}</a>
+                      {i < validTags.length - 1 ? ", " : ""}
+                    </>
+                  ))
+                ) : (
+                  <>
+                    -
+                  </>
+                );
+              })()
+            }
+          </div>
+        </nav>
+      </div>
+    </article>
+  </ul>
+</Layout>

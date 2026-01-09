@@ -1,0 +1,117 @@
+---
+import { getCollection, render, type CollectionEntry } from "astro:content";
+import Layout from "../layouts/Layout.astro";
+import Pagination from "../components/Pagination.astro";
+
+const POSTS_PER_PAGE = 5;
+
+export async function GET() {
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: "/page/1/",
+    },
+  });
+}
+
+
+const posts = (await getCollection("blog")).sort(
+  (a, b) =>
+    new Date(a.data.pubDate).getTime() - new Date(b.data.pubDate).getTime()
+);
+
+const title = "ブログ";
+
+const toJSTParts = (d: Date | string) => {
+  const base = new Date(d);
+  const jst = new Date(
+    base.toLocaleString("en-US", { timeZone: "Asia/Tokyo" })
+  );
+  const y = jst.getFullYear();
+  const m = String(jst.getMonth() + 1).padStart(2, "0");
+  const dd = String(jst.getDate()).padStart(2, "0");
+  return { y, m, dd };
+};
+
+const url = new URL(Astro.request.url);
+const currentPage = Number(url.searchParams.get("page")) || 1;
+const totalPages = Math.ceil(posts.length / POSTS_PER_PAGE);
+const start = (currentPage - 1) * POSTS_PER_PAGE;
+const end = start + POSTS_PER_PAGE;
+const paginatedPosts = posts.toReversed().slice(start, end);
+---
+
+<Layout title={title}>
+  <ul>
+    {
+      await Promise.all(
+        paginatedPosts.map(async (post) => {
+          const { Content } = await render(post);
+          const { y, m, dd } = toJSTParts(post.data.pubDate);
+          return (
+            <div class="date">
+            <p>記録日：{`${y}年${m}月${dd}日`}</p>
+            </div>
+            <article>
+              <Fragment key={post.slug}>
+                <li>
+                  <h1>{post.data.title}</h1>
+                  <Content />
+                </li>
+
+              </Fragment>
+<nav class="post-nav">
+  <div class="left">
+    <a href={`/blog/${post.slug}/`}>表示</a>
+  </div>
+  <div class="right">
+    <span>カテゴリ:</span>
+    {
+      post.data.category && post.data.category !== "" ? (
+        <>
+          <a href={`/category/${post.data.category}/`}>
+            {post.data.category}
+          </a>{" "}
+          /
+        </>
+      ) : (
+        <>
+          - /
+        </>
+      )
+    }
+    <span>タグ:</span>
+    {
+      (() => {
+        const validTags = (post.data.tags ?? []).filter(
+          (t) => t && t !== "",
+        );
+        return validTags.length > 0 ? (
+          validTags.map((t, i) => (
+            <>
+              <a href={`/tag/${t}/`}>{t}</a>
+              {i < validTags.length - 1 ? ", " : ""}
+            </>
+          ))
+        ) : (
+          <>
+            -
+          </>
+        );
+      })()
+    }
+  </div>
+</nav>
+  </article>
+          );
+        })
+      )
+    }
+  </ul>
+
+  <Pagination
+    currentPage={currentPage}
+    totalPages={totalPages}
+    baseUrl="/page/"
+  />
+</Layout>

@@ -1,0 +1,11 @@
+---
+// Header.astro
+const { titleSuffix = "" } = Astro.props;
+import { title } from "../config";
+---
+
+<header>
+  <a href="/">
+    <h1>{title} {titleSuffix && `[${titleSuffix}]`}</h1>
+  </a>
+</header>

@@ -1,0 +1,15 @@
+export const title = "日記帳";
+export const category = "カテゴリ";
+export const tag = "タグ";
+export const archive = "アーカイブ";
+export const footer = "My Blog Admin";
+export const siteUrl = "https://example.com";
+export const mainSiteUrl = "https://example.com";
+export const searchTitle = "検索";
+export const searchPlaceholder = "検索...";
+export const searchLabel = "このサイトを検索";
+export const aboutTitle = "このサイトについて";
+export const linksTitle = "リンク";
+export const topPageLabel = "トップページ";
+export const sitemapLabel = "サイトマップ";
+export const rssLabel = "RSSフィード";

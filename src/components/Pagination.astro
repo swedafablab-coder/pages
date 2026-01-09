@@ -1,0 +1,107 @@
+---
+interface Props {
+  currentPage: number;
+  totalPages: number;
+  baseUrl: string;
+}
+const { currentPage, totalPages, baseUrl } = Astro.props;
+
+const getPaginationItems = (
+  currentPage: number,
+  totalPages: number,
+): (string | number)[] => {
+  // 1. Determine the pages to display
+  const pages = new Set<number>();
+  pages.add(1);
+  if (totalPages > 1) {
+    pages.add(totalPages);
+  }
+
+  // Add current page and its neighbours
+  pages.add(currentPage);
+  if (currentPage > 1) pages.add(currentPage - 1);
+  if (currentPage < totalPages) pages.add(currentPage + 1);
+
+  // If near the start, add first few pages
+  if (currentPage <= 3) {
+    pages.add(2);
+    pages.add(3);
+  }
+
+  // If near the end, add last few pages
+  if (currentPage >= totalPages - 2) {
+    pages.add(totalPages - 1);
+    pages.add(totalPages - 2);
+  }
+
+  // 2. Convert set to sorted array and filter out invalid pages
+  const sortedPages = Array.from(pages)
+    .filter((p: number): p is number => p > 0 && p <= totalPages)
+    .sort((a: number, b: number) => a - b);
+
+  // 3. Add ellipses
+  const result: (string | number)[] = [];
+  let lastPage: number = 0;
+  for (const page of sortedPages) {
+    if (lastPage !== 0 && page - lastPage > 1) {
+      result.push("...");
+    }
+    result.push(page);
+    lastPage = page;
+  }
+
+  return result;
+};
+const paginationItems = getPaginationItems(currentPage, totalPages);
+---
+
+<style>
+  .pagination {
+    padding: 1rem;
+    color: var(--text);
+    display: flex;
+    gap: 0.5rem;
+    border-radius: 0.5rem;
+    justify-content: center;
+    align-items: center;
+  }
+  .pagination a {
+    color: var(--a);
+    text-decoration: none;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.375rem;
+    transition: background-color 0.3s ease;
+  }
+  .pagination a:hover {
+    background-color: var(--a);
+    color: var(--text-light);
+  }
+  .pagination span[aria-current="page"] {
+    background-color: var(--a);
+    color: var(--text-light);
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.375rem;
+  }
+</style>
+
+<ul>
+  <nav class="pagination">
+    {currentPage > 1 && <a href={`${baseUrl}${currentPage - 1}/`}>« 前</a>}
+    {
+      paginationItems.map((item) => {
+        if (item === "...") {
+          return <span>...</span>;
+        } else if (item === currentPage) {
+          return <span aria-current="page">{item}</span>;
+        } else {
+          return <a href={`${baseUrl}${item}/`}>{item}</a>;
+        }
+      })
+    }
+    {
+      currentPage < totalPages && (
+        <a href={`${baseUrl}${currentPage + 1}/`}>次 »</a>
+      )
+    }
+  </nav>
+</ul>

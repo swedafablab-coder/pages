@@ -1,0 +1,268 @@
+---
+import { getCollection } from "astro:content";
+import {
+  category,
+  tag,
+  archive,
+  linksTitle,
+  mainSiteUrl,
+  topPageLabel,
+  searchTitle,
+  aboutTitle,
+  siteUrl,
+  sitemapLabel,
+  rssLabel,
+} from "../config";
+
+const blogPosts = await getCollection("blog");
+
+function countByField(
+  posts: Array<import("astro:content").CollectionEntry<"blog">>,
+  field: "category" | "tags",
+): { [key: string]: number } {
+  const counts: { [key: string]: number } = {};
+  for (const post of posts) {
+    const items = post.data[field] as string | string[] | undefined;
+    if (!items) continue;
+    if (Array.isArray(items)) {
+      for (const item of items) {
+        if (item === "") continue; // Skip empty strings
+        counts[item as string] = (counts[item as string] || 0) + 1;
+      }
+    } else {
+      if (items === "") continue; // Skip empty strings
+      counts[items as string] = (counts[items as string] || 0) + 1;
+    }
+  }
+  return counts;
+}
+
+const categories = countByField(blogPosts, "category");
+const tags = countByField(blogPosts, "tags");
+
+const archiveCounts = blogPosts.reduce(
+  (acc, post) => {
+    const d = new Date(post.data.pubDate);
+    const yearMonth = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, "0")}`;
+
+    acc[yearMonth] = (acc[yearMonth] || 0) + 1;
+    return acc;
+  },
+  {} as { [key: string]: number },
+);
+---
+
+<aside class="expandable-section" data-section-id="category">
+  <p>{category}</p>
+  <div class="list-container collapsed">
+    <ul>
+      {
+        Object.entries(categories)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([category, count]) => (
+            <li>
+              <a href={`/category/${category}/`}>
+                {category}({count})
+              </a>
+            </li>
+          ))
+      }
+    </ul>
+  </div>
+  <button class="expand-btn" aria-label="全て表示">+</button>
+</aside>
+
+<aside class="expandable-section" data-section-id="tag">
+  <p>{tag}</p>
+  <div class="list-container collapsed">
+    <ul>
+      {
+        Object.entries(tags)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([tag, count]) => (
+            <li>
+              <a href={`/tag/${tag}/`}>
+                {tag}({count})
+              </a>
+            </li>
+          ))
+      }
+    </ul>
+  </div>
+  <button class="expand-btn" aria-label="全て表示">+</button>
+</aside>
+
+<aside class="expandable-section" data-section-id="archive">
+  <p>{archive}</p>
+  <div class="list-container collapsed">
+    <ul>
+      {
+        Object.entries(archiveCounts)
+          .sort(([a], [b]) => b.localeCompare(a))
+          .map(([yearMonth, count]) => {
+            const [year, month] = yearMonth.split("-");
+            return (
+              <li>
+                <a href={`/archive/${yearMonth}/`}>
+                  {year}年{month}月 ({count})
+                </a>
+              </li>
+            );
+          })
+      }
+    </ul>
+  </div>
+  <button class="expand-btn" aria-label="全て表示">+</button>
+</aside>
+
+<aside class="expandable-section" data-section-id="link">
+  <p>{linksTitle}</p>
+  <div class="list-container collapsed">
+    <ul>
+      <li><a href={mainSiteUrl} target="_blank">{topPageLabel}</a></li>
+      <li><a href="/search/">{searchTitle}</a></li>
+      <li><a href="/about/">{aboutTitle}</a></li>
+      <li><a href={`${siteUrl}/blog/`}></a></li>
+      <li><a href="/sitemap-index.xml">{sitemapLabel}</a></li>
+      <li><a href={`${siteUrl}/rss.xml`}>{rssLabel}</a></li>
+    </ul>
+  </div>
+  <button class="expand-btn" aria-label="全て表示">+</button>
+</aside>
+
+<style>
+  .list-container {
+    transition: max-height 0.5s ease-in-out;
+    max-height: 1000px; /* 展開時の最大目安（アニメーション用） */
+    overflow: hidden;
+  }
+
+  .list-container.collapsed {
+    max-height: 200px; /* 制限する高さ */
+    position: relative;
+  }
+
+  /* 省略時のグラデーション */
+  .list-container.collapsed::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 60px;
+    background: linear-gradient(transparent, var(--b));
+    pointer-events: none;
+    transition: opacity 0.5s;
+  }
+
+  .expand-btn {
+    display: none; /* デフォルトは非表示 */
+    width: 100%;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 1.5rem;
+    color: var(--a);
+    padding: 5px;
+    line-height: 1;
+    background-color: rgb(243, 247, 247);
+    border-radius: 10px;
+  }
+
+  .expand-btn:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+
+  .expand-btn.visible {
+    display: block;
+  }
+</style>
+
+<script>
+  document.addEventListener("astro:page-load", () => {
+    const sections = document.querySelectorAll(".expandable-section");
+    const MAX_HEIGHT = 200;
+    const STORAGE_KEY = "expanded-sections";
+
+    // セッションストレージから展開済みIDリストを取得
+    const getExpandedIds = () => {
+      try {
+        return JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "[]");
+      } catch {
+        return [];
+      }
+    };
+
+    // IDを保存
+    const saveExpandedId = (id: string) => {
+      const ids = getExpandedIds();
+      if (!ids.includes(id)) {
+        ids.push(id);
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
+      }
+    };
+
+    const expandedIds = getExpandedIds();
+    
+    // 1. 計測フェーズ (Read)
+    const measurements = Array.from(sections).map((section) => {
+      const container = section.querySelector(".list-container") as HTMLElement;
+      const btn = section.querySelector(".expand-btn") as HTMLButtonElement;
+      const list = container.querySelector("ul") as HTMLElement;
+      const sectionId = section.getAttribute("data-section-id");
+
+      if (!container || !btn || !list) return null;
+
+      const isExpanded = sectionId && expandedIds.includes(sectionId);
+      const contentHeight = list.offsetHeight;
+      
+      return { section, container, btn, list, sectionId, isExpanded, contentHeight };
+    });
+
+    // 2. 適用フェーズ (Write)
+    measurements.forEach((m) => {
+      if (!m) return;
+      const { container, btn, list, sectionId, isExpanded, contentHeight } = m;
+
+      if (isExpanded) {
+        container.classList.remove("collapsed");
+        container.style.maxHeight = "none";
+        // ボタンはCSSでdisplay:noneにはならないのでstyleで消す
+        btn.classList.remove("visible");
+        btn.style.display = "none";
+        return;
+      }
+
+      if (contentHeight > MAX_HEIGHT) {
+        btn.classList.add("visible");
+        // ボタンクリック時の処理はユーザー操作後なので、ここでのリフローは許容されるが、
+        // アニメーション開始時も最適化しておく
+        btn.addEventListener("click", () => {
+          // アニメーション開始
+          const startHeight = container.offsetHeight; // Read
+          container.style.maxHeight = startHeight + "px"; // Write
+
+          requestAnimationFrame(() => {
+            container.classList.remove("collapsed");
+            const targetHeight = list.offsetHeight; // Read inside rAF is okay
+            container.style.maxHeight = targetHeight + "px"; // Write
+
+            container.addEventListener(
+              "transitionend",
+              () => {
+                container.style.maxHeight = "none";
+              },
+              { once: true },
+            );
+          });
+
+          btn.style.display = "none";
+          if (sectionId) saveExpandedId(sectionId);
+        });
+      } else {
+        container.classList.remove("collapsed");
+        btn.classList.remove("visible");
+      }
+    });
+  });
+</script>
